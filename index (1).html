@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZeroCheck</title>
+<script>
+  try {
+    document.documentElement.dataset.theme = localStorage.getItem('zc_theme') ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><span class="mark">Z</span><span>ZeroCheck</span></div>
+  <nav class="actions">
+    <button id="btnGrid" class="ghost">Questions</button>
+    <button id="btnKeys" class="ghost">Keys</button>
+    <button id="btnThemes" class="ghost">Themes</button>
+    <button id="btnGemini" class="ghost">Gemini</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Setup -->
+  <section id="setup" class="card">
+    <p class="eyebrow">Setup</p>
+    <h2>Start a new session</h2>
+    <form id="setupForm">
+      <label class="full">
+        <span class="lbl">Topic name <em>Optional</em></span>
+        <input id="inTopic" type="text" maxlength="80" placeholder="e.g. Cardiology Set 3" autocomplete="off">
+      </label>
+      <label>
+        <span class="lbl">First question</span>
+        <input id="inFirst" type="number" min="0" value="1" required>
+      </label>
+      <label>
+        <span class="lbl">Number of questions</span>
+        <input id="inCount" type="number" min="1" placeholder="Open-ended">
+      </label>
+      <label>
+        <span class="lbl">Options per question</span>
+        <select id="inOptions">
+          <option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option>
+        </select>
+      </label>
+      <label>
+        <span class="lbl">Option style</span>
+        <select id="inStyle">
+          <option value="letters">A, B, C, D</option>
+          <option value="numbers">1, 2, 3, 4</option>
+          <option value="roman">I, II, III, IV</option>
+        </select>
+      </label>
+      <label>
+        <span class="lbl">Timing</span>
+        <select id="inTiming">
+          <option value="none">None</option>
+          <option value="stopwatch">Stopwatch</option>
+          <option value="timer">Timer</option>
+        </select>
+      </label>
+      <label id="minsWrap" class="hidden">
+        <span class="lbl">Timer minutes</span>
+        <input id="inMinutes" type="number" min="1" step="any" placeholder="e.g. 90">
+      </label>
+      <button type="submit" class="primary full">Start session</button>
+    </form>
+  </section>
+
+  <!-- Test -->
+  <section id="test" class="card hidden">
+    <div class="pbar hidden"><i id="pfill"></i></div>
+    <div class="bar">
+      <div class="bar-info">
+        <span id="topicLabel" class="topic"></span>
+        <span id="progress" class="muted small"></span>
+      </div>
+      <div id="clock" class="clock hidden">
+        <span id="clockTime">00:00</span>
+        <button id="btnClock" class="mini">Pause</button>
+      </div>
+    </div>
+
+    <div class="qwrap">
+      <span class="eyebrow">Question</span>
+      <strong id="qNum">1</strong>
+      <span id="qStatus" class="status"></span>
+    </div>
+
+    <div id="options" class="options"></div>
+    <button id="btnSkip" class="skip">Skip question</button>
+
+    <div class="nav">
+      <button id="btnPrev">← Previous</button>
+      <button id="btnNext">Next →</button>
+    </div>
+
+    <button id="btnFinish" class="primary finish">Finish test</button>
+    <div class="foot"><button class="link js-new">New session</button></div>
+  </section>
+
+  <!-- Finished -->
+  <section id="done" class="card hidden">
+    <p class="eyebrow">Test complete</p>
+    <h2 id="doneTitle">Test finished</h2>
+
+    <div class="stats">
+      <div><span id="stAnswered">0</span><small>Answered</small></div>
+      <div><span id="stSkipped">0</span><small>Skipped</small></div>
+      <div><span id="stNone">0</span><small>Not answered</small></div>
+      <div id="stTimeBox"><span id="stTime">0</span><small>Time</small></div>
+    </div>
+
+    <button id="btnCheck" class="primary big">Check answers against a key</button>
+
+    <label id="timeOpt" class="check">
+      <input type="checkbox" id="chkTime" checked>
+      <span>Include time in export</span>
+    </label>
+
+    <div class="export-choices two">
+      <button id="btnPdf">Download PDF</button>
+      <button id="btnCopy">Copy to clipboard</button>
+    </div>
+
+    <div class="foot2">
+      <button id="btnBack" class="link">← Back to test</button>
+      <button class="link js-new">New session</button>
+    </div>
+  </section>
+
+  <!-- Answer key -->
+  <section id="review" class="card hidden">
+    <p class="eyebrow">Answer key</p>
+    <h2>Add the correct answers</h2>
+
+    <div class="drop">
+      <input type="file" id="keyFiles" accept="image/*,application/pdf" multiple hidden>
+      <button id="btnPick">Choose photos or a PDF</button>
+      <span id="fileInfo" class="muted small">No files selected</span>
+    </div>
+    <button id="btnExtract" class="primary full-btn">Read key with Gemini</button>
+    <p id="extractNote" class="muted small">Question numbers in the key should match yours. Always review the result below.</p>
+
+    <div class="divider"><span>Review and edit</span></div>
+    <div id="keyEditor" class="keyeditor"></div>
+
+    <button id="btnCompare" class="primary full-btn">Compare answers</button>
+    <div class="foot2">
+      <button id="btnBackDone" class="link">← Back</button>
+      <button id="btnClearKey" class="link">Clear key</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="results" class="card hidden">
+    <p class="eyebrow">Results</p>
+    <h2 id="resTitle">Your score</h2>
+
+    <div class="score">
+      <strong id="scoreMain">0 / 0</strong>
+      <span id="scoreSub" class="muted"></span>
+    </div>
+
+    <div class="stats">
+      <div><span id="rsCorrect">0</span><small>Correct</small></div>
+      <div><span id="rsWrong">0</span><small>Wrong</small></div>
+      <div><span id="rsMissed">0</span><small>Skipped / blank</small></div>
+      <div id="rsNoKeyBox"><span id="rsNoKey">0</span><small>No key</small></div>
+    </div>
+
+    <div id="wrongList"></div>
+
+    <label id="timeOptR" class="check">
+      <input type="checkbox" id="chkTimeR" checked>
+      <span>Include time in export</span>
+    </label>
+    <div class="export-choices two">
+      <button id="btnPdfR" class="primary">Download PDF</button>
+      <button id="btnCopyR">Copy to clipboard</button>
+    </div>
+
+    <div class="foot2">
+      <button id="btnEditKey" class="link">← Edit key</button>
+      <button id="btnBackDone2" class="link">Back to summary</button>
+    </div>
+  </section>
+</main>
+
+<!-- Question grid -->
+<dialog id="dlgGrid">
+  <div class="dlg-head">
+    <h2>Questions</h2>
+    <button class="link" data-close>Close</button>
+  </div>
+  <div class="filters">
+    <button data-filter="all" class="chip on">All</button>
+    <button data-filter="skipped" class="chip">Skipped</button>
+    <button data-filter="unanswered" class="chip">Not answered</button>
+  </div>
+  <div id="grid" class="grid"></div>
+  <p class="muted small">Filled = answered. Dashed = skipped. Plain = not visited.</p>
+</dialog>
+
+<!-- Key mapping -->
+<dialog id="dlgKeys">
+  <div class="dlg-head">
+    <h2>Key mapping</h2>
+    <button class="link" data-close>Close</button>
+  </div>
+  <p class="muted small">Click an action, then press the key you want. Numpad keys work.</p>
+  <div id="keyList" class="keylist"></div>
+  <button id="btnResetKeys" class="link">Reset to defaults</button>
+</dialog>
+
+<!-- Themes -->
+<dialog id="dlgThemes">
+  <div class="dlg-head">
+    <h2>Themes</h2>
+    <button class="link" data-close>Close</button>
+  </div>
+  <div id="themeList" class="themes"></div>
+</dialog>
+
+<!-- Gemini settings -->
+<dialog id="dlgGemini">
+  <div class="dlg-head">
+    <h2>Gemini settings</h2>
+    <button class="link" data-close>Close</button>
+  </div>
+  <p class="muted small">Used only to read answer-key photos. Your key is saved in this browser only. Photos you upload are sent to Google.</p>
+  <div class="fields">
+    <label>
+      <span class="lbl">Gemini API key</span>
+      <input id="gemKey" type="password" autocomplete="off" placeholder="Paste your key">
+    </label>
+    <label>
+      <span class="lbl">Model <em>Leave empty for Auto</em></span>
+      <input id="gemModel" type="text" list="modelList" placeholder="Auto (recommended)" autocomplete="off">
+      <datalist id="modelList"></datalist>
+    </label>
+  </div>
+  <div class="row">
+    <button id="btnTestKey">Test connection</button>
+    <button id="btnSaveKey" class="primary">Save</button>
+  </div>
+  <p id="gemMsg" class="muted small"></p>
+  <div class="row-links">
+    <a class="link" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Get a free key from Google AI Studio →</a>
+    <button id="btnRemoveKey" class="link">Remove saved key</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
